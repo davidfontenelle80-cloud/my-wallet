@@ -10,55 +10,67 @@
   function close(){var m=document.getElementById("modal");if(m){m.classList.add("hidden");m.innerHTML=""}}
   function accountOptions(data){return (data.accounts||[]).map(function(a){return '<option value="'+esc(a.id)+'">'+esc(a.name)+'</option>'}).join("")}
   function categoryOptions(data){return (data.categories||["Other"]).map(function(c){return '<option>'+esc(c)+'</option>'}).join("")}
-  function fileToDataUrl(file,cb){
-    if(!file){cb("");return}
-    var r=new FileReader();
-    r.onload=function(){cb(String(r.result||""))};
-    r.readAsDataURL(file);
-  }
+  function fileToDataUrl(file,cb){if(!file){cb("");return}var r=new FileReader();r.onload=function(){cb(String(r.result||""))};r.readAsDataURL(file)}
   function parseDate(s){
     var raw=String(s||"");
     var numeric=raw.match(/(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{2,4})/);
     if(numeric){
-      var mm=String(numeric[1]).padStart(2,"0"), dd=String(numeric[2]).padStart(2,"0"), yy=String(numeric[3]);
+      var a=Number(numeric[1]), b=Number(numeric[2]), yy=String(numeric[3]);
       if(yy.length===2)yy="20"+yy;
-      return yy+"-"+mm+"-"+dd;
+      var mm=a, dd=b;
+      if(a>12&&b<=12){mm=b;dd=a}
+      if(b>12&&a<=12){mm=a;dd=b}
+      if(mm>=1&&mm<=12&&dd>=1&&dd<=31)return yy+"-"+String(mm).padStart(2,"0")+"-"+String(dd).padStart(2,"0");
     }
     var months={jan:1,january:1,feb:2,february:2,mar:3,march:3,apr:4,april:4,may:5,jun:6,june:6,jul:7,july:7,aug:8,august:8,sep:9,sept:9,september:9,oct:10,october:10,nov:11,november:11,dec:12,december:12};
     var m=raw.match(/\b(jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:t|tember)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)\s+(\d{1,2})(?:,)?\s+(\d{4})/i);
     if(!m)return "";
-    var mon=String(months[m[1].toLowerCase()]).padStart(2,"0"), day=String(m[2]).padStart(2,"0"), year=m[3];
-    return year+"-"+mon+"-"+day;
+    return m[3]+"-"+String(months[m[1].toLowerCase()]).padStart(2,"0")+"-"+String(m[2]).padStart(2,"0");
   }
-  function cleanMerchant(line){
-    return String(line||"").replace(/[^A-Za-z0-9&' .\-]/g," ").replace(/\s+/g," ").trim().slice(0,44);
+  function cleanLine(line){return String(line||"").replace(/[^A-Za-z0-9&' .\-]/g," ").replace(/\s+/g," ").trim()}
+  function hasPrice(s){return /\$?\s*\d{1,5}[.,]\d{2}/.test(s)}
+  function looksPhone(s){return /(\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4})/.test(s)}
+  function looksAddress(s){return /\b(st|street|ave|avenue|rd|road|blvd|drive|dr|lane|ln|ny|ct|ca|fl|tx|zip)\b/i.test(s)||/^\d+\s+[A-Za-z]/.test(s)}
+  function merchantScore(line,index,total){
+    var c=cleanLine(line);
+    if(!c||c.length<4||!/[A-Za-z]/.test(c))return -999;
+    if(hasPrice(c)||looksPhone(c)||looksAddress(c)||/www|http|@|total|subtotal|tax|tip|visa|mastercard|debit|credit|change|cash|auth|receipt|thank|balance|amount|sale|table|server|item|qty|google|copyright/i.test(c))return -999;
+    var letters=(c.match(/[A-Za-z]/g)||[]).length;
+    var caps=(c.match(/[A-Z]/g)||[]).length;
+    var words=c.split(/\s+/).length;
+    var topBoost=Math.max(0,18-index*3);
+    var score=letters+caps*0.8+topBoost;
+    if(words>=2)score+=8;
+    if(/restaurant|market|store|cafe|coffee|diner|grill|shop|pharmacy|target|walmart|costco|aldi|whole foods|dine|fine/i.test(c))score+=24;
+    if(c===c.toUpperCase())score+=12;
+    if(index>Math.ceil(total*.35))score-=22;
+    return score;
+  }
+  function suggestCategory(merchant){
+    var m=String(merchant||"").toLowerCase();
+    if(/restaurant|cafe|coffee|diner|grill|pizza|burger|dine|starbucks|mcdonald|wendy|chipotle/.test(m))return "Dining";
+    if(/market|grocery|whole foods|stop|shop|aldi|costco|walmart|target/.test(m))return "Groceries";
+    if(/shell|exxon|mobil|gas|fuel|bp/.test(m))return "Transportation";
+    return "";
   }
   function parseReceiptText(text){
     var raw=String(text||"");
     var lines=raw.split(/\n+/).map(function(x){return x.trim()}).filter(Boolean);
-    var bad=/total|subtotal|tax|tip|visa|mastercard|debit|credit|change|cash|auth|receipt|thank|business|street|city|phone|www|http|balance|amount|sale|login|google|copyright/i;
-    var candidates=[];
-    for(var i=0;i<Math.min(lines.length,12);i++){
-      var c=cleanMerchant(lines[i]);
-      if(!c||bad.test(c)||!/[A-Za-z]/.test(c))continue;
-      var letters=(c.match(/[A-Za-z]/g)||[]).length;
-      var caps=(c.match(/[A-Z]/g)||[]).length;
-      var score=letters+(caps*0.5)-i;
-      if(/restaurant|market|store|cafe|coffee|diner|grill|shop|pharmacy|target|walmart|costco|aldi|whole foods/i.test(c))score+=20;
-      if(c.length<4)score-=12;
-      candidates.push({text:c,score:score});
-    }
+    var top=lines.slice(0,Math.max(3,Math.ceil(lines.length*.28)));
+    var candidates=top.map(function(l,i){return {text:cleanLine(l).slice(0,44),score:merchantScore(l,i,lines.length)}}).filter(function(x){return x.score>-900});
     candidates.sort(function(a,b){return b.score-a.score});
     var merchant=candidates.length?candidates[0].text:"";
     var date=parseDate(raw);
-    var amounts=[];
-    var re=/\$?\s*(\d{1,4}[.,]\d{2})/g, match;
-    while((match=re.exec(raw))){amounts.push(Number(match[1].replace(",",".")))}
-    var totalLine=lines.find(function(l){return /\b(total|amount due|balance due|sale)\b/i.test(l)&&/\d+[.,]\d{2}/.test(l)});
+    var totalLines=lines.filter(function(l){return /\b(total|amount due|balance due|grand total)\b/i.test(l)&&hasPrice(l)});
     var amount=0;
-    if(totalLine){var tm=totalLine.match(/(\d{1,4}[.,]\d{2})(?!.*\d{1,4}[.,]\d{2})/);if(tm)amount=Number(tm[1].replace(",","."));}
-    if(!amount&&amounts.length){amount=Math.max.apply(null,amounts.filter(function(n){return n>0&&n<10000}))||0;}
-    return {merchant:merchant,date:date,amount:amount?amount.toFixed(2):""};
+    if(totalLines.length){var best=totalLines[totalLines.length-1];var tm=best.match(/(\d{1,5}[.,]\d{2})(?!.*\d{1,5}[.,]\d{2})/);if(tm)amount=Number(tm[1].replace(",","."));}
+    if(!amount){var amounts=[],re=/\$?\s*(\d{1,5}[.,]\d{2})/g,match;while((match=re.exec(raw))){amounts.push(Number(match[1].replace(",",".")))}if(amounts.length)amount=Math.max.apply(null,amounts.filter(function(n){return n>0&&n<10000}))||0;}
+    var category=suggestCategory(merchant);
+    var conf=[];
+    conf.push("Merchant "+(merchant?"medium/high":"low"));
+    conf.push("Date "+(date?"medium/high":"low"));
+    conf.push("Amount "+(amount?"high":"low"));
+    return {merchant:merchant,date:date,amount:amount?amount.toFixed(2):"",category:category,confidence:conf.join(" • ")};
   }
   function runOcr(url,modal){
     var status=modal.querySelector("#ocr-status");
@@ -70,7 +82,8 @@
       if(parsed.merchant)modal.querySelector('[name="merchant"]').value=parsed.merchant;
       if(parsed.date)modal.querySelector('[name="date"]').value=parsed.date;
       if(parsed.amount)modal.querySelector('[name="amount"]').value=parsed.amount;
-      status.textContent="OCR filled what it could. Verify before saving.";
+      if(parsed.category){var sel=modal.querySelector('[name="category"]');Array.from(sel.options).some(function(o){if(o.text.toLowerCase()===parsed.category.toLowerCase()){sel.value=o.text;return true}return false})}
+      status.textContent="OCR suggestions: "+parsed.confidence+". Verify before saving.";
     }).catch(function(){status.textContent="OCR could not read this receipt. Enter the details manually.";});
   }
   function openReceipt(){
@@ -82,7 +95,7 @@
     var imageData="";
     var camera=modal.querySelector('[name="camera"]');
     var photo=modal.querySelector('[name="photo"]');
-    function clearOcrFields(){modal.querySelector('[name="merchant"]').value="";modal.querySelector('[name="amount"]').value="";modal.querySelector('[name="date"]').value=today();var st=modal.querySelector('#ocr-status');if(st)st.textContent="";}
+    function clearOcrFields(){modal.querySelector('[name="merchant"]').value="";modal.querySelector('[name="amount"]').value="";modal.querySelector('[name="date"]').value=today();var st=modal.querySelector('#ocr-status');if(st)st.textContent=""}
     function handleFile(input){fileToDataUrl(input.files&&input.files[0],function(url){clearOcrFields();imageData=url;var prev=modal.querySelector("#receipt-preview");if(prev&&url){prev.innerHTML='<img src="'+url+'" alt="Receipt preview" style="max-width:100%;border-radius:16px;margin-top:8px"><div class="button-row" style="margin-top:10px"><button class="btn gold" type="button" data-retake>Retake Photo</button><button class="btn secondary" type="button" data-different>Choose Different Photo</button></div><p class="help-text">Verify the details before saving. Uncheck log transaction to save only the image.</p>';prev.querySelector('[data-retake]').onclick=function(){camera.value="";camera.click()};prev.querySelector('[data-different]').onclick=function(){photo.value="";photo.click()};}runOcr(url,modal)})}
     camera.onchange=function(){handleFile(this)};
     photo.onchange=function(){handleFile(this)};
@@ -105,20 +118,7 @@
       location.reload();
     };
   }
-  function addButton(){
-    var main=document.getElementById("main");
-    if(!main||!/Transactions/.test(main.textContent))return;
-    if(main.querySelector("[data-receipt-entry]"))return;
-    var hero=main.querySelector(".hero .button-row");
-    if(!hero)return;
-    var b=document.createElement("button");
-    b.type="button";
-    b.className="btn secondary";
-    b.dataset.receiptEntry="1";
-    b.textContent="📷 Receipt";
-    b.onclick=openReceipt;
-    hero.appendChild(b);
-  }
+  function addButton(){var main=document.getElementById("main");if(!main||!/Transactions/.test(main.textContent))return;if(main.querySelector("[data-receipt-entry]"))return;var hero=main.querySelector(".hero .button-row");if(!hero)return;var b=document.createElement("button");b.type="button";b.className="btn secondary";b.dataset.receiptEntry="1";b.textContent="📷 Receipt";b.onclick=openReceipt;hero.appendChild(b)}
   new MutationObserver(addButton).observe(document.body,{childList:true,subtree:true});
   if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",addButton);else addButton();
 })();
