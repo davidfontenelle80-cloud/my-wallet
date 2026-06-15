@@ -13,6 +13,17 @@
     if(!account)return alert("Account not found");
     var fund=(account.funds||[]).find(function(f){return f.name===fundName});
     if(!fund)return alert("Sinking fund not found");
+    var action=prompt("Type E to edit or R to remove", "E");
+    if(action===null)return;
+    action=String(action).trim().toUpperCase();
+    if(action==="R"){
+      if(!confirm("Remove "+fund.name+"?"))return;
+      account.funds=(account.funds||[]).filter(function(f){return f.id!==fund.id});
+      data.goals=(data.goals||[]).filter(function(g){return g.linkedFundId!==fund.id});
+      save(data);
+      location.reload();
+      return;
+    }
     var newName=prompt("Sinking fund name",fund.name);
     if(newName===null)return;
     newName=newName.trim();
