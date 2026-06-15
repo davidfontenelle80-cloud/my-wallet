@@ -15,9 +15,7 @@
     if(goal){goal.name=fund.name;goal.target=amt(target);goal.linkedAccountId=account.id;return;}
     data.goals.push({id:String(Date.now())+Math.random().toString(36).slice(2,8),name:fund.name,target:amt(target),linkedAccountId:account.id,linkedFundId:fund.id});
   }
-  function removeGoal(data,fund){
-    data.goals=(data.goals||[]).filter(function(g){return g.linkedFundId!==fund.id});
-  }
+  function removeGoal(data,fund){data.goals=(data.goals||[]).filter(function(g){return g.linkedFundId!==fund.id})}
   function linkedGoal(data,fund){return (data.goals||[]).find(function(g){return g.linkedFundId===fund.id})}
   function openFundMenu(accountName,fundName){
     var data=state();
@@ -25,38 +23,40 @@
     if(!account)return;
     var fund=(account.funds||[]).find(function(f){return f.name===fundName});
     if(!fund)return;
+    var goal=linkedGoal(data,fund);
     var modal=document.getElementById("modal");
     if(!modal)return;
-    var goal=linkedGoal(data,fund);
     modal.classList.remove("hidden");
-    modal.innerHTML='<div class="modal-card"><div class="section-title"><div><h2>'+fund.name+'</h2><p class="muted">Inside '+account.name+'</p></div><button class="icon-btn" data-close>×</button></div><div class="row"><span>Current amount</span><strong>'+money(fund.amount)+'</strong></div>'+(goal?'<div class="row"><span>Goal target</span><strong>'+money(goal.target)+'</strong></div>':'')+'<div class="button-row"><button class="btn gold" data-edit> Edit Fund </button><button class="btn danger" data-remove> Remove Fund </button><button class="btn secondary" data-cancel> Cancel </button></div></div>';
+    modal.innerHTML='<div class="modal-card"><div class="section-title"><div><h2>'+fund.name+'</h2><p class="muted">Inside '+account.name+'</p></div><button class="icon-btn" data-close>×</button></div><div class="row"><span>Current amount</span><strong>'+money(fund.amount)+'</strong></div><div class="button-row"><button class="btn gold" data-edit> Edit Fund </button><button class="btn danger" data-remove> Remove Fund </button><button class="btn secondary" data-cancel> Cancel </button></div><form class="form-grid" style="margin-top:14px"><label class="fund-pill" style="justify-content:flex-start;gap:10px"><input name="showGoal" type="checkbox" '+(goal?'checked':'')+' style="width:auto"> Show in Goals Tab</label><div class="field"><label>Goal target</label><input name="goalTarget" type="number" step="0.01" placeholder="Optional" value="'+(goal?goal.target:'')+'"></div><button class="btn secondary" type="submit">Save Goal Setting</button></form></div>';
     modal.querySelector("[data-close]").onclick=closeModal;
     modal.querySelector("[data-cancel]").onclick=closeModal;
     modal.querySelector("[data-edit]").onclick=function(){openEditForm(accountName,fund.name)};
     modal.querySelector("[data-remove]").onclick=function(){openRemoveConfirm(accountName,fund.name)};
+    modal.querySelector("form").onsubmit=function(e){
+      e.preventDefault();
+      var showGoal=modal.querySelector('input[name="showGoal"]').checked;
+      var target=modal.querySelector('input[name="goalTarget"]').value;
+      if(showGoal){ensureGoal(data,account,fund,target)}else{removeGoal(data,fund)}
+      save(data);
+      location.reload();
+    };
   }
   function openEditForm(accountName,fundName){
     var data=state();
     var account=(data.accounts||[]).find(function(a){return a.name===accountName});
     var fund=account&&(account.funds||[]).find(function(f){return f.name===fundName});
     if(!fund)return;
-    var goal=linkedGoal(data,fund);
-    var checked=goal?'checked':'';
-    var target=goal?goal.target:'';
     var modal=document.getElementById("modal");
-    modal.innerHTML='<div class="modal-card"><div class="section-title"><h2>Edit Sinking Fund</h2><button class="icon-btn" data-close>×</button></div><form class="form-grid"><div class="field"><label>Fund name</label><input name="name" value="'+fund.name.replace(/"/g,"&quot;")+'"></div><div class="field"><label>Amount in fund</label><input name="amount" type="number" step="0.01" value="'+(fund.amount||0)+'"></div><label class="fund-pill" style="justify-content:flex-start;gap:10px"><input name="showGoal" type="checkbox" '+checked+' style="width:auto"> Show in Goals Tab</label><div class="field"><label>Goal target</label><input name="goalTarget" type="number" step="0.01" placeholder="Optional" value="'+target+'"></div><button class="btn gold" type="submit">Save Changes</button><button class="btn secondary" type="button" data-cancel>Cancel</button></form></div>';
+    modal.innerHTML='<div class="modal-card"><div class="section-title"><h2>Edit Sinking Fund</h2><button class="icon-btn" data-close>×</button></div><form class="form-grid"><div class="field"><label>Fund name</label><input name="name" value="'+fund.name.replace(/"/g,"&quot;")+'"></div><div class="field"><label>Amount in fund</label><input name="amount" type="number" step="0.01" value="'+(fund.amount||0)+'"></div><button class="btn gold" type="submit">Save Changes</button><button class="btn secondary" type="button" data-cancel>Cancel</button></form></div>';
     modal.querySelector("[data-close]").onclick=closeModal;
     modal.querySelector("[data-cancel]").onclick=closeModal;
     modal.querySelector("form").onsubmit=function(e){
       e.preventDefault();
       var name=modal.querySelector('input[name="name"]').value.trim();
       var amount=modal.querySelector('input[name="amount"]').value;
-      var showGoal=modal.querySelector('input[name="showGoal"]').checked;
-      var goalTarget=modal.querySelector('input[name="goalTarget"]').value;
       if(!name)return;
       fund.name=name;
       fund.amount=amt(amount);
-      if(showGoal){ensureGoal(data,account,fund,goalTarget)}else{removeGoal(data,fund)}
       (data.goals||[]).forEach(function(g){if(g.linkedFundId===fund.id)g.name=name});
       save(data);
       location.reload();
