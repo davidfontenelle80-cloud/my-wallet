@@ -17,7 +17,7 @@
   <div id="app" class="app-shell">
     <header class="topbar">
       <div>
-        <div class="eyebrow">Personal finance command center</div>
+        <div class="eyebrow" data-i18n="tagline">Personal finance command center</div>
         <h1 id="greeting">My Wallet</h1>
       </div>
       <button class="icon-btn" id="help-btn" aria-label="Help">?</button>
@@ -26,13 +26,13 @@
     <main id="main" class="view" tabindex="-1"></main>
 
     <nav class="tabbar" aria-label="Main navigation">
-      <button class="tab active" data-view="dashboard">⌂<span>Home</span></button>
-      <button class="tab" data-view="banking">🏦<span>Banking</span></button>
-      <button class="tab" data-view="cards">💳<span>Cards</span></button>
-      <button class="tab" data-view="transactions">🧾<span>Transactions</span></button>
-      <button class="tab" data-view="transfers">↔<span>Transfers</span></button>
-      <button class="tab" data-view="goals">🎯<span>Goals</span></button>
-      <button class="tab" data-view="settings">⚙<span>Settings</span></button>
+      <button class="tab active" data-view="dashboard"><span class="tab-icon">🏠</span><span data-label="home">Home</span></button>
+      <button class="tab" data-view="banking"><span class="tab-icon">🏦</span><span data-label="banking">Banking</span></button>
+      <button class="tab" data-view="cards"><span class="tab-icon">💳</span><span data-label="cards">Cards</span></button>
+      <button class="tab" data-view="transactions"><span class="tab-icon">🧾</span><span data-label="transactions">Transactions</span></button>
+      <button class="tab" data-view="transfers"><span class="tab-icon">🔁</span><span data-label="transfers">Transfers</span></button>
+      <button class="tab" data-view="goals"><span class="tab-icon">🎯</span><span data-label="goals">Goals</span></button>
+      <button class="tab" data-view="settings"><span class="tab-icon">⚙️</span><span data-label="settings">Settings</span></button>
     </nav>
   </div>
 
@@ -40,6 +40,6 @@
   <div id="modal" class="modal hidden" aria-hidden="true"></div>
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
-  <script src="app.js"></script>
+  <script src="app.js?v=2"></script>
 </body>
 </html>
