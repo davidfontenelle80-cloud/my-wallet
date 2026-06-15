@@ -17,19 +17,39 @@
     r.readAsDataURL(file);
   }
   function parseDate(s){
-    var m=String(s||"").match(/(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{2,4})/);
+    var raw=String(s||"");
+    var numeric=raw.match(/(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{2,4})/);
+    if(numeric){
+      var mm=String(numeric[1]).padStart(2,"0"), dd=String(numeric[2]).padStart(2,"0"), yy=String(numeric[3]);
+      if(yy.length===2)yy="20"+yy;
+      return yy+"-"+mm+"-"+dd;
+    }
+    var months={jan:1,january:1,feb:2,february:2,mar:3,march:3,apr:4,april:4,may:5,jun:6,june:6,jul:7,july:7,aug:8,august:8,sep:9,sept:9,september:9,oct:10,october:10,nov:11,november:11,dec:12,december:12};
+    var m=raw.match(/\b(jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:t|tember)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)\s+(\d{1,2})(?:,)?\s+(\d{4})/i);
     if(!m)return "";
-    var mm=String(m[1]).padStart(2,"0"), dd=String(m[2]).padStart(2,"0"), yy=String(m[3]);
-    if(yy.length===2)yy="20"+yy;
-    return yy+"-"+mm+"-"+dd;
+    var mon=String(months[m[1].toLowerCase()]).padStart(2,"0"), day=String(m[2]).padStart(2,"0"), year=m[3];
+    return year+"-"+mon+"-"+day;
+  }
+  function cleanMerchant(line){
+    return String(line||"").replace(/[^A-Za-z0-9&' .\-]/g," ").replace(/\s+/g," ").trim().slice(0,44);
   }
   function parseReceiptText(text){
     var raw=String(text||"");
     var lines=raw.split(/\n+/).map(function(x){return x.trim()}).filter(Boolean);
-    var merchant="";
-    for(var i=0;i<Math.min(lines.length,6);i++){
-      if(!/total|subtotal|tax|visa|mastercard|debit|credit|change|cash|auth/i.test(lines[i]) && /[A-Za-z]/.test(lines[i])){merchant=lines[i].slice(0,40);break;}
+    var bad=/total|subtotal|tax|tip|visa|mastercard|debit|credit|change|cash|auth|receipt|thank|business|street|city|phone|www|http|balance|amount|sale|login|google|copyright/i;
+    var candidates=[];
+    for(var i=0;i<Math.min(lines.length,12);i++){
+      var c=cleanMerchant(lines[i]);
+      if(!c||bad.test(c)||!/[A-Za-z]/.test(c))continue;
+      var letters=(c.match(/[A-Za-z]/g)||[]).length;
+      var caps=(c.match(/[A-Z]/g)||[]).length;
+      var score=letters+(caps*0.5)-i;
+      if(/restaurant|market|store|cafe|coffee|diner|grill|shop|pharmacy|target|walmart|costco|aldi|whole foods/i.test(c))score+=20;
+      if(c.length<4)score-=12;
+      candidates.push({text:c,score:score});
     }
+    candidates.sort(function(a,b){return b.score-a.score});
+    var merchant=candidates.length?candidates[0].text:"";
     var date=parseDate(raw);
     var amounts=[];
     var re=/\$?\s*(\d{1,4}[.,]\d{2})/g, match;
@@ -47,9 +67,9 @@
     status.textContent="Reading receipt… please verify before saving.";
     window.Tesseract.recognize(url,"eng",{logger:function(m){if(m&&m.status&&status){status.textContent="Reading receipt… "+m.status;}}}).then(function(result){
       var parsed=parseReceiptText(result&&result.data&&result.data.text);
-      if(parsed.merchant&&!modal.querySelector('[name="merchant"]').value)modal.querySelector('[name="merchant"]').value=parsed.merchant;
+      if(parsed.merchant)modal.querySelector('[name="merchant"]').value=parsed.merchant;
       if(parsed.date)modal.querySelector('[name="date"]').value=parsed.date;
-      if(parsed.amount&&!modal.querySelector('[name="amount"]').value)modal.querySelector('[name="amount"]').value=parsed.amount;
+      if(parsed.amount)modal.querySelector('[name="amount"]').value=parsed.amount;
       status.textContent="OCR filled what it could. Verify before saving.";
     }).catch(function(){status.textContent="OCR could not read this receipt. Enter the details manually.";});
   }
@@ -60,9 +80,12 @@
     modal.classList.remove("hidden");
     modal.innerHTML='<div class="modal-card"><div class="section-title"><h2>Receipt Transaction</h2><button class="icon-btn" data-close>×</button></div><form class="form-grid"><div class="button-row"><label class="btn gold" style="text-align:center">Take Photo<input name="camera" type="file" accept="image/*" capture="environment" hidden></label><label class="btn secondary" style="text-align:center">Import Photo<input name="photo" type="file" accept="image/*" hidden></label></div><div id="receipt-preview" class="help-text">Add a receipt photo, then verify before saving.</div><p id="ocr-status" class="help-text"></p><div class="field"><label>Merchant</label><input name="merchant" placeholder="Store or restaurant"></div><div class="field"><label>Date</label><input name="date" type="date" value="'+today()+'"></div><div class="field"><label>Amount</label><input name="amount" type="number" step="0.01" placeholder="0.00" required></div><div class="field"><label>Category</label><select name="category">'+categoryOptions(data)+'</select></div><div class="field"><label>Account</label><select name="accountId">'+accountOptions(data)+'</select></div><p class="help-text">Verify before saving. By default, this will log an expense and update the selected account balance.</p><label class="fund-pill" style="justify-content:flex-start;gap:10px"><input name="logTransaction" type="checkbox" checked style="width:auto"> Log transaction and update account balance</label><label class="fund-pill" style="justify-content:flex-start;gap:10px"><input name="saveImage" type="checkbox" checked style="width:auto"> Save receipt image</label><button class="btn gold" type="submit">Save Transaction</button><button class="btn secondary" type="button" data-cancel>Cancel</button></form></div>';
     var imageData="";
-    function handleFile(input){fileToDataUrl(input.files&&input.files[0],function(url){imageData=url;var prev=modal.querySelector("#receipt-preview");if(prev&&url){prev.innerHTML='<img src="'+url+'" alt="Receipt preview" style="max-width:100%;border-radius:16px;margin-top:8px"><p class="help-text">Verify the details before saving. Uncheck log transaction to save only the image.</p>'}runOcr(url,modal)})}
-    modal.querySelector('[name="camera"]').onchange=function(){handleFile(this)};
-    modal.querySelector('[name="photo"]').onchange=function(){handleFile(this)};
+    var camera=modal.querySelector('[name="camera"]');
+    var photo=modal.querySelector('[name="photo"]');
+    function clearOcrFields(){modal.querySelector('[name="merchant"]').value="";modal.querySelector('[name="amount"]').value="";modal.querySelector('[name="date"]').value=today();var st=modal.querySelector('#ocr-status');if(st)st.textContent="";}
+    function handleFile(input){fileToDataUrl(input.files&&input.files[0],function(url){clearOcrFields();imageData=url;var prev=modal.querySelector("#receipt-preview");if(prev&&url){prev.innerHTML='<img src="'+url+'" alt="Receipt preview" style="max-width:100%;border-radius:16px;margin-top:8px"><div class="button-row" style="margin-top:10px"><button class="btn gold" type="button" data-retake>Retake Photo</button><button class="btn secondary" type="button" data-different>Choose Different Photo</button></div><p class="help-text">Verify the details before saving. Uncheck log transaction to save only the image.</p>';prev.querySelector('[data-retake]').onclick=function(){camera.value="";camera.click()};prev.querySelector('[data-different]').onclick=function(){photo.value="";photo.click()};}runOcr(url,modal)})}
+    camera.onchange=function(){handleFile(this)};
+    photo.onchange=function(){handleFile(this)};
     modal.querySelector("[data-close]").onclick=close;
     modal.querySelector("[data-cancel]").onclick=close;
     modal.querySelector("form").onsubmit=function(e){
