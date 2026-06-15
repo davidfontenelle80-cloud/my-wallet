@@ -14,23 +14,15 @@
   function parseDate(s){
     var raw=String(s||"");
     var numeric=raw.match(/(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{2,4})/);
-    if(numeric){
-      var a=Number(numeric[1]), b=Number(numeric[2]), yy=String(numeric[3]);
-      if(yy.length===2)yy="20"+yy;
-      var mm=a, dd=b;
-      if(a>12&&b<=12){mm=b;dd=a}
-      if(b>12&&a<=12){mm=a;dd=b}
-      if(mm>=1&&mm<=12&&dd>=1&&dd<=31)return yy+"-"+String(mm).padStart(2,"0")+"-"+String(dd).padStart(2,"0");
-    }
+    if(numeric){var a=Number(numeric[1]), b=Number(numeric[2]), yy=String(numeric[3]);if(yy.length===2)yy="20"+yy;var mm=a, dd=b;if(a>12&&b<=12){mm=b;dd=a}if(b>12&&a<=12){mm=a;dd=b}if(mm>=1&&mm<=12&&dd>=1&&dd<=31)return yy+"-"+String(mm).padStart(2,"0")+"-"+String(dd).padStart(2,"0")}
     var months={jan:1,january:1,feb:2,february:2,mar:3,march:3,apr:4,april:4,may:5,jun:6,june:6,jul:7,july:7,aug:8,august:8,sep:9,sept:9,september:9,oct:10,october:10,nov:11,november:11,dec:12,december:12};
     var m=raw.match(/\b(jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:t|tember)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)\s+(\d{1,2})(?:,)?\s+(\d{4})/i);
-    if(!m)return "";
-    return m[3]+"-"+String(months[m[1].toLowerCase()]).padStart(2,"0")+"-"+String(m[2]).padStart(2,"0");
+    if(!m)return "";return m[3]+"-"+String(months[m[1].toLowerCase()]).padStart(2,"0")+"-"+String(m[2]).padStart(2,"0");
   }
   function cleanLine(line){return String(line||"").replace(/[^A-Za-z0-9&' .\-]/g," ").replace(/\s+/g," ").trim()}
   function hasPrice(s){return /\$?\s*\d{1,5}[.,]\d{2}/.test(s)}
   function looksPhone(s){return /(\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4})/.test(s)}
-  function looksAddress(s){return /\b(st|street|ave|avenue|rd|road|blvd|drive|dr|lane|ln|ny|ct|ca|fl|tx|zip)\b/i.test(s)||/^\d+\s+[A-Za-z]/.test(s)}
+  function looksAddress(s){return /\b(st|street|ave|avenue|rd|road|blvd|drive|dr|lane|ln|ny|ct|ca|fl|tx|zip|district|downtown|plaza|mall|suite|floor)\b/i.test(s)||/^\d+\s+[A-Za-z]/.test(s)}
   function merchantScore(line,index,total){
     var c=cleanLine(line);
     if(!c||c.length<4||!/[A-Za-z]/.test(c))return -999;
@@ -38,87 +30,56 @@
     var letters=(c.match(/[A-Za-z]/g)||[]).length;
     var caps=(c.match(/[A-Z]/g)||[]).length;
     var words=c.split(/\s+/).length;
-    var topBoost=Math.max(0,18-index*3);
-    var score=letters+caps*0.8+topBoost;
-    if(words>=2)score+=8;
-    if(/restaurant|market|store|cafe|coffee|diner|grill|shop|pharmacy|target|walmart|costco|aldi|whole foods|dine|fine/i.test(c))score+=24;
-    if(c===c.toUpperCase())score+=12;
-    if(index>Math.ceil(total*.35))score-=22;
+    var topBoost=Math.max(0,22-index*4);
+    var score=letters+caps*0.9+topBoost;
+    if(words>=2)score+=18;
+    if(/restaurant|market|store|cafe|coffee|diner|grill|shop|pharmacy|target|walmart|costco|aldi|whole foods|dine|fine/i.test(c))score+=30;
+    if(c===c.toUpperCase())score+=14;
+    if(index>Math.ceil(total*.30))score-=30;
     return score;
   }
-  function suggestCategory(merchant){
-    var m=String(merchant||"").toLowerCase();
-    if(/restaurant|cafe|coffee|diner|grill|pizza|burger|dine|starbucks|mcdonald|wendy|chipotle/.test(m))return "Dining";
-    if(/market|grocery|whole foods|stop|shop|aldi|costco|walmart|target/.test(m))return "Groceries";
-    if(/shell|exxon|mobil|gas|fuel|bp/.test(m))return "Transportation";
-    return "";
+  function merchantCandidates(lines){
+    var top=lines.slice(0,Math.max(4,Math.ceil(lines.length*.25)));
+    var out=[];
+    top.forEach(function(l,i){out.push({text:cleanLine(l).slice(0,48),score:merchantScore(l,i,lines.length)})});
+    for(var i=0;i<Math.min(top.length-1,5);i++){
+      var a=cleanLine(top[i]), b=cleanLine(top[i+1]);
+      if(!a||!b)continue;
+      if(looksAddress(a)||looksAddress(b)||looksPhone(a)||looksPhone(b)||hasPrice(a)||hasPrice(b))continue;
+      if(/www|http|phone|receipt|server|table|total|tax|subtotal/i.test(a+" "+b))continue;
+      var combo=(a+" "+b).slice(0,58);
+      var s=merchantScore(combo,i,lines.length)+28;
+      if(/[A-Z]{3,}/.test(a)&&/[A-Z]{3,}/.test(b))s+=12;
+      out.push({text:combo,score:s});
+    }
+    return out.filter(function(x){return x.score>-900}).sort(function(a,b){return b.score-a.score});
   }
+  function suggestCategory(merchant){var m=String(merchant||"").toLowerCase();if(/restaurant|cafe|coffee|diner|grill|pizza|burger|dine|starbucks|mcdonald|wendy|chipotle/.test(m))return "Dining";if(/market|grocery|whole foods|stop|shop|aldi|costco|walmart|target/.test(m))return "Groceries";if(/shell|exxon|mobil|gas|fuel|bp/.test(m))return "Transportation";return ""}
   function parseReceiptText(text){
     var raw=String(text||"");
     var lines=raw.split(/\n+/).map(function(x){return x.trim()}).filter(Boolean);
-    var top=lines.slice(0,Math.max(3,Math.ceil(lines.length*.28)));
-    var candidates=top.map(function(l,i){return {text:cleanLine(l).slice(0,44),score:merchantScore(l,i,lines.length)}}).filter(function(x){return x.score>-900});
-    candidates.sort(function(a,b){return b.score-a.score});
+    var candidates=merchantCandidates(lines);
     var merchant=candidates.length?candidates[0].text:"";
     var date=parseDate(raw);
     var totalLines=lines.filter(function(l){return /\b(total|amount due|balance due|grand total)\b/i.test(l)&&hasPrice(l)});
     var amount=0;
-    if(totalLines.length){var best=totalLines[totalLines.length-1];var tm=best.match(/(\d{1,5}[.,]\d{2})(?!.*\d{1,5}[.,]\d{2})/);if(tm)amount=Number(tm[1].replace(",","."));}
-    if(!amount){var amounts=[],re=/\$?\s*(\d{1,5}[.,]\d{2})/g,match;while((match=re.exec(raw))){amounts.push(Number(match[1].replace(",",".")))}if(amounts.length)amount=Math.max.apply(null,amounts.filter(function(n){return n>0&&n<10000}))||0;}
+    if(totalLines.length){var best=totalLines[totalLines.length-1];var tm=best.match(/(\d{1,5}[.,]\d{2})(?!.*\d{1,5}[.,]\d{2})/);if(tm)amount=Number(tm[1].replace(",","."))}
+    if(!amount){var amounts=[],re=/\$?\s*(\d{1,5}[.,]\d{2})/g,match;while((match=re.exec(raw))){amounts.push(Number(match[1].replace(",",".")))}if(amounts.length)amount=Math.max.apply(null,amounts.filter(function(n){return n>0&&n<10000}))||0}
     var category=suggestCategory(merchant);
-    var conf=[];
-    conf.push("Merchant "+(merchant?"medium/high":"low"));
-    conf.push("Date "+(date?"medium/high":"low"));
-    conf.push("Amount "+(amount?"high":"low"));
+    var topScore=candidates.length?candidates[0].score:0;
+    var conf=[];conf.push("Merchant "+(topScore>85?"high":merchant?"medium":"low"));conf.push("Date "+(date?"medium/high":"low"));conf.push("Amount "+(amount?"high":"low"));
     return {merchant:merchant,date:date,amount:amount?amount.toFixed(2):"",category:category,confidence:conf.join(" • ")};
   }
-  function runOcr(url,modal){
-    var status=modal.querySelector("#ocr-status");
-    if(!url||!status)return;
-    if(!window.Tesseract){status.textContent="OCR is not available. Enter the details manually.";return;}
-    status.textContent="Reading receipt… please verify before saving.";
-    window.Tesseract.recognize(url,"eng",{logger:function(m){if(m&&m.status&&status){status.textContent="Reading receipt… "+m.status;}}}).then(function(result){
-      var parsed=parseReceiptText(result&&result.data&&result.data.text);
-      if(parsed.merchant)modal.querySelector('[name="merchant"]').value=parsed.merchant;
-      if(parsed.date)modal.querySelector('[name="date"]').value=parsed.date;
-      if(parsed.amount)modal.querySelector('[name="amount"]').value=parsed.amount;
-      if(parsed.category){var sel=modal.querySelector('[name="category"]');Array.from(sel.options).some(function(o){if(o.text.toLowerCase()===parsed.category.toLowerCase()){sel.value=o.text;return true}return false})}
-      status.textContent="OCR suggestions: "+parsed.confidence+". Verify before saving.";
-    }).catch(function(){status.textContent="OCR could not read this receipt. Enter the details manually.";});
-  }
+  function runOcr(url,modal){var status=modal.querySelector("#ocr-status");if(!url||!status)return;if(!window.Tesseract){status.textContent="OCR is not available. Enter the details manually.";return}status.textContent="Reading receipt… please verify before saving.";window.Tesseract.recognize(url,"eng",{logger:function(m){if(m&&m.status&&status){status.textContent="Reading receipt… "+m.status}}}).then(function(result){var parsed=parseReceiptText(result&&result.data&&result.data.text);if(parsed.merchant)modal.querySelector('[name="merchant"]').value=parsed.merchant;if(parsed.date)modal.querySelector('[name="date"]').value=parsed.date;if(parsed.amount)modal.querySelector('[name="amount"]').value=parsed.amount;if(parsed.category){var sel=modal.querySelector('[name="category"]');Array.from(sel.options).some(function(o){if(o.text.toLowerCase()===parsed.category.toLowerCase()){sel.value=o.text;return true}return false})}status.textContent="OCR suggestions: "+parsed.confidence+". Verify before saving."}).catch(function(){status.textContent="OCR could not read this receipt. Enter the details manually."})}
   function openReceipt(){
-    var data=get();
-    var modal=document.getElementById("modal");
-    if(!modal)return;
-    modal.classList.remove("hidden");
+    var data=get();var modal=document.getElementById("modal");if(!modal)return;modal.classList.remove("hidden");
     modal.innerHTML='<div class="modal-card"><div class="section-title"><h2>Receipt Transaction</h2><button class="icon-btn" data-close>×</button></div><form class="form-grid"><div class="button-row"><label class="btn gold" style="text-align:center">Take Photo<input name="camera" type="file" accept="image/*" capture="environment" hidden></label><label class="btn secondary" style="text-align:center">Import Photo<input name="photo" type="file" accept="image/*" hidden></label></div><div id="receipt-preview" class="help-text">Add a receipt photo, then verify before saving.</div><p id="ocr-status" class="help-text"></p><div class="field"><label>Merchant</label><input name="merchant" placeholder="Store or restaurant"></div><div class="field"><label>Date</label><input name="date" type="date" value="'+today()+'"></div><div class="field"><label>Amount</label><input name="amount" type="number" step="0.01" placeholder="0.00" required></div><div class="field"><label>Category</label><select name="category">'+categoryOptions(data)+'</select></div><div class="field"><label>Account</label><select name="accountId">'+accountOptions(data)+'</select></div><p class="help-text">Verify before saving. By default, this will log an expense and update the selected account balance.</p><label class="fund-pill" style="justify-content:flex-start;gap:10px"><input name="logTransaction" type="checkbox" checked style="width:auto"> Log transaction and update account balance</label><label class="fund-pill" style="justify-content:flex-start;gap:10px"><input name="saveImage" type="checkbox" checked style="width:auto"> Save receipt image</label><button class="btn gold" type="submit">Save Transaction</button><button class="btn secondary" type="button" data-cancel>Cancel</button></form></div>';
-    var imageData="";
-    var camera=modal.querySelector('[name="camera"]');
-    var photo=modal.querySelector('[name="photo"]');
+    var imageData="";var camera=modal.querySelector('[name="camera"]');var photo=modal.querySelector('[name="photo"]');
     function clearOcrFields(){modal.querySelector('[name="merchant"]').value="";modal.querySelector('[name="amount"]').value="";modal.querySelector('[name="date"]').value=today();var st=modal.querySelector('#ocr-status');if(st)st.textContent=""}
-    function handleFile(input){fileToDataUrl(input.files&&input.files[0],function(url){clearOcrFields();imageData=url;var prev=modal.querySelector("#receipt-preview");if(prev&&url){prev.innerHTML='<img src="'+url+'" alt="Receipt preview" style="max-width:100%;border-radius:16px;margin-top:8px"><div class="button-row" style="margin-top:10px"><button class="btn gold" type="button" data-retake>Retake Photo</button><button class="btn secondary" type="button" data-different>Choose Different Photo</button></div><p class="help-text">Verify the details before saving. Uncheck log transaction to save only the image.</p>';prev.querySelector('[data-retake]').onclick=function(){camera.value="";camera.click()};prev.querySelector('[data-different]').onclick=function(){photo.value="";photo.click()};}runOcr(url,modal)})}
-    camera.onchange=function(){handleFile(this)};
-    photo.onchange=function(){handleFile(this)};
-    modal.querySelector("[data-close]").onclick=close;
-    modal.querySelector("[data-cancel]").onclick=close;
-    modal.querySelector("form").onsubmit=function(e){
-      e.preventDefault();
-      var f=new FormData(e.target);
-      var amount=amt(f.get("amount"));
-      var accountId=String(f.get("accountId")||"");
-      var shouldLog=!!f.get("logTransaction");
-      var shouldSaveImage=!!f.get("saveImage");
-      var data=get();
-      var acct=(data.accounts||[]).find(function(a){return a.id===accountId});
-      if(shouldLog&&!acct)return;
-      if(shouldLog){acct.balance=amt((acct.balance||0)-amount)}
-      data.transactions=data.transactions||[];
-      data.transactions.unshift({id:id(),type:shouldLog?"expense":"receipt",date:String(f.get("date")||today()),merchant:String(f.get("merchant")||"Receipt"),category:String(f.get("category")||"Other"),amount:shouldLog?-Math.abs(amount):0,accountId:shouldLog?accountId:"",note:shouldLog?"Receipt transaction":"Receipt image only",receiptImage:shouldSaveImage&&imageData?imageData:""});
-      put(data);
-      location.reload();
-    };
+    function handleFile(input){fileToDataUrl(input.files&&input.files[0],function(url){clearOcrFields();imageData=url;var prev=modal.querySelector("#receipt-preview");if(prev&&url){prev.innerHTML='<img src="'+url+'" alt="Receipt preview" style="max-width:100%;border-radius:16px;margin-top:8px"><div class="button-row" style="margin-top:10px"><button class="btn gold" type="button" data-retake>Retake Photo</button><button class="btn secondary" type="button" data-different>Choose Different Photo</button></div><p class="help-text">Verify the details before saving. Uncheck log transaction to save only the image.</p>';prev.querySelector('[data-retake]').onclick=function(){camera.value="";camera.click()};prev.querySelector('[data-different]').onclick=function(){photo.value="";photo.click()}}runOcr(url,modal)})}
+    camera.onchange=function(){handleFile(this)};photo.onchange=function(){handleFile(this)};modal.querySelector("[data-close]").onclick=close;modal.querySelector("[data-cancel]").onclick=close;
+    modal.querySelector("form").onsubmit=function(e){e.preventDefault();var f=new FormData(e.target);var amount=amt(f.get("amount"));var accountId=String(f.get("accountId")||"");var shouldLog=!!f.get("logTransaction");var shouldSaveImage=!!f.get("saveImage");var data=get();var acct=(data.accounts||[]).find(function(a){return a.id===accountId});if(shouldLog&&!acct)return;if(shouldLog){acct.balance=amt((acct.balance||0)-amount)}data.transactions=data.transactions||[];data.transactions.unshift({id:id(),type:shouldLog?"expense":"receipt",date:String(f.get("date")||today()),merchant:String(f.get("merchant")||"Receipt"),category:String(f.get("category")||"Other"),amount:shouldLog?-Math.abs(amount):0,accountId:shouldLog?accountId:"",note:shouldLog?"Receipt transaction":"Receipt image only",receiptImage:shouldSaveImage&&imageData?imageData:""});put(data);location.reload()};
   }
   function addButton(){var main=document.getElementById("main");if(!main||!/Transactions/.test(main.textContent))return;if(main.querySelector("[data-receipt-entry]"))return;var hero=main.querySelector(".hero .button-row");if(!hero)return;var b=document.createElement("button");b.type="button";b.className="btn secondary";b.dataset.receiptEntry="1";b.textContent="📷 Receipt";b.onclick=openReceipt;hero.appendChild(b)}
-  new MutationObserver(addButton).observe(document.body,{childList:true,subtree:true});
-  if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",addButton);else addButton();
+  new MutationObserver(addButton).observe(document.body,{childList:true,subtree:true});if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",addButton);else addButton();
 })();
