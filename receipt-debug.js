@@ -1,7 +1,19 @@
 (function(){
   "use strict";
   var lastText="";
-  function esc(s){return String(s||"").replace(/[&<>\"']/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c]})}
+  function titleFromDomain(domain){
+    var name=String(domain||"").toLowerCase().replace(/^www\./,"").split(".")[0]||"";
+    name=name.replace(/[^a-z0-9]+/g," ").trim();
+    var key=name.replace(/\s+/g,"");
+    var known={dinefine:"DINEFINE RESTAURANT",starbucks:"STARBUCKS",target:"TARGET",walmart:"WALMART",costco:"COSTCO",wholefoods:"WHOLE FOODS",wholefoodsmarket:"WHOLE FOODS",stopandshop:"STOP AND SHOP",shoprite:"SHOPRITE",shell:"SHELL",exxon:"EXXON",mobil:"MOBIL",bp:"BP"};
+    if(known[key])return known[key];
+    return name?name.split(/\s+/).map(function(w){return w.toUpperCase()}).join(" "):"";
+  }
+  function merchantFromText(text){
+    var raw=String(text||"");
+    var m=raw.match(/(?:https?:\/\/)?(?:www\.)?([a-z0-9-]+\.(?:com|net|org|co|us))\b/i);
+    return m?titleFromDomain(m[1]):"";
+  }
   function addDebugBox(modal,text){
     lastText=String(text||"");
     var status=modal&&modal.querySelector("#ocr-status");
@@ -25,7 +37,15 @@
       return originalRecognize.apply(this,arguments).then(function(result){
         try{
           var modal=document.getElementById("modal");
-          var text=result&&result.data&&result.data.text||"";
+          var data=result&&result.data;
+          var text=data&&data.text||"";
+          var merchant=merchantFromText(text);
+          if(merchant&&data&&text.indexOf(merchant)===-1){
+            data.text=merchant+"\n"+text;
+            text=data.text;
+            var input=modal&&modal.querySelector('[name="merchant"]');
+            if(input&&!input.value)input.value=merchant;
+          }
           addDebugBox(modal,text);
         }catch(e){}
         return result;
