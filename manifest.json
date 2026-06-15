@@ -1,0 +1,13 @@
+{
+  "name": "My Wallet",
+  "short_name": "Wallet",
+  "description": "Manual personal finance command center with sinking funds, transactions, transfers, goals, and credit card coverage.",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#102331",
+  "theme_color": "#2f6688",
+  "orientation": "portrait",
+  "icons": [
+    { "src": "icons/favicon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+  ]
+}
