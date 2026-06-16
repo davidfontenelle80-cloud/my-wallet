@@ -1,4 +1,4 @@
-const CACHE_VERSION = "my-wallet-v2-investments";
+const CACHE_VERSION = "my-wallet-v3-investments-receipts";
 const PRECACHE = ["./", "./index.html", "./styles.css", "./app.js", "./manifest.json", "./icons/favicon.svg"];
 
 self.addEventListener("install", (event) => {
