@@ -11,6 +11,7 @@
   const I18N = {
     en: {
       home: "Home", banking: "Banking", cards: "Cards", transactions: "Transactions", transfers: "Transfers", goals: "Goals", investments: "Investments", settings: "Settings",
+      navHome: "Home", navBanking: "Bank", navCards: "Cards", navTransactions: "Txns", navTransfers: "Move", navGoals: "Goals", navInvestments: "Invest", navSettings: "Settings",
       tagline: "Personal finance command center", morning: "Good Morning", afternoon: "Good Afternoon", evening: "Good Evening",
       walletOverview: "Wallet overview", dashboardCopy: "Track every dollar, reserve money into sinking funds, and keep credit cards covered.",
       netWorth: "Net Worth", freeCash: "Free Cash", reserved: "In Sinking Funds", investmentsTotal: "Investments", cardDebt: "Card Debt", creditCardCoverage: "Credit Card Coverage",
@@ -29,6 +30,7 @@
     },
     es: {
       home: "Inicio", banking: "Bancos", cards: "Tarjetas", transactions: "Movimientos", transfers: "Traspasos", goals: "Metas", investments: "Inversiones", settings: "Ajustes",
+      navHome: "Inicio", navBanking: "Banco", navCards: "Tarj.", navTransactions: "Mov.", navTransfers: "Mover", navGoals: "Metas", navInvestments: "Invert.", navSettings: "Ajustes",
       tagline: "Centro de control financiero", morning: "Buenos Días", afternoon: "Buenas Tardes", evening: "Buenas Noches",
       walletOverview: "Resumen de cartera", dashboardCopy: "Controla cada dólar, separa dinero en fondos, y mantén las tarjetas cubiertas.",
       netWorth: "Patrimonio", freeCash: "Dinero libre", reserved: "En fondos", investmentsTotal: "Inversiones", cardDebt: "Deuda tarjetas", creditCardCoverage: "Cobertura de Tarjetas",
@@ -78,7 +80,7 @@
   }
   function save(next) { state = normalize(next); localStorage.setItem(KEY, JSON.stringify(state)); applyTheme(); render(); }
   function toast(message) { const el = $("toast"); el.textContent = message; el.classList.add("show"); clearTimeout(toast.timer); toast.timer = setTimeout(() => el.classList.remove("show"), 2200); }
-  function applyTheme() { document.documentElement.dataset.theme = state.settings.theme || "dark"; document.documentElement.lang = state.settings.lang || "en"; const tag = document.querySelector("[data-i18n='tagline']"); if (tag) tag.textContent = t("tagline"); document.querySelectorAll("[data-label]").forEach(el => { el.textContent = t(el.dataset.label); }); }
+  function applyTheme() { document.documentElement.dataset.theme = state.settings.theme || "dark"; document.documentElement.lang = state.settings.lang || "en"; const tag = document.querySelector("[data-i18n='tagline']"); if (tag) tag.textContent = t("tagline"); document.querySelectorAll("[data-label]").forEach(el => { el.textContent = t(el.dataset.label); }); document.querySelectorAll("[data-nav-label]").forEach(el => { el.textContent = t(el.dataset.navLabel); }); }
   function greeting() { const h = new Date().getHours(); const part = h < 12 ? t("morning") : h < 17 ? t("afternoon") : t("evening"); return state.settings.firstName ? `${part}, ${state.settings.firstName}` : "My Wallet"; }
   function totals() { const bank = state.accounts.reduce((s, a) => s + num(a.balance), 0); const reserved = state.accounts.reduce((s, a) => s + (a.funds || []).reduce((x, f) => x + num(f.amount), 0), 0); const cardDebt = state.cards.reduce((s, c) => s + num(c.balance), 0); const cardLimit = state.cards.reduce((s, c) => s + num(c.limit), 0); const investments = investmentTotal(); const transfer = state.accounts.flatMap((a) => (a.funds || []).map((f) => ({ ...f, accountId: a.id }))).find((f) => /transfer/i.test(f.name)); const transferBalance = transfer ? num(transfer.amount) : 0; return { bank, reserved, free: bank - reserved, investments, cardDebt, cardLimit, netWorth: bank + investments - cardDebt, transferBalance, cardCoverage: cardDebt ? transferBalance / cardDebt : 1, cardOverUnder: transferBalance - cardDebt }; }
   function accountReserved(account) { return (account.funds || []).reduce((s, f) => s + num(f.amount), 0); }

@@ -40,3 +40,14 @@ button,input,select,textarea{font:inherit}button{cursor:pointer}.app-shell{width
 .holding-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:12px;align-items:start;padding:12px 0;border-top:1px solid rgba(255,255,255,.08)}
 .holding-row b,.holding-row small{display:block}.holding-row small{color:var(--muted);font-size:.78rem;margin-top:3px}.holding-row strong{display:block;text-align:right}.mini-actions{justify-content:flex-end;margin-top:6px}.mini-actions .btn{min-height:34px;padding:0 10px;font-size:.78rem}.meter.small{height:5px;margin-bottom:6px}
 @media(max-width:420px){.tab{flex-basis:58px}.tab span:last-child{font-size:.58rem}.holding-row{grid-template-columns:1fr}.holding-row strong{text-align:left}.mini-actions{justify-content:flex-start}}
+
+/* Bottom navigation */
+body{padding-bottom:calc(env(safe-area-inset-bottom) + 136px)}
+.tabbar{width:min(100vw,920px);display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px;overflow:visible}
+.tab{min-width:0;min-height:50px;flex:initial;padding:4px 2px;border-radius:15px}
+.tab-icon{font-size:1rem}
+.tab span:last-child{font-size:.58rem;line-height:1.05;white-space:nowrap}
+@media(min-width:760px){
+  .tab{min-height:52px}
+  .tab span:last-child{font-size:.66rem}
+}
