@@ -1,5 +1,14 @@
-const CACHE_VERSION = "my-wallet-v5-nav-polish";
-const PRECACHE = ["./", "./index.html", "./styles.css", "./app.js", "./manifest.json", "./icons/favicon.svg"];
+const CACHE_VERSION = "my-wallet-v6-cloud-backup";
+const PRECACHE = [
+  "./",
+  "./index.html",
+  "./styles.css",
+  "./app.js",
+  "./js/firebase/firebase-config.js",
+  "./js/firebase/cloud-backup.js",
+  "./manifest.json",
+  "./icons/favicon.svg",
+];
 
 self.addEventListener("install", (event) => {
   event.waitUntil(caches.open(CACHE_VERSION).then((cache) => cache.addAll(PRECACHE)).then(() => self.skipWaiting()));
