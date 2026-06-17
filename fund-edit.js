@@ -92,6 +92,7 @@
       });
     });
   }
-  new MutationObserver(run).observe(document.body,{childList:true,subtree:true});
+  var _runTimer;
+  new MutationObserver(function(){clearTimeout(_runTimer);_runTimer=setTimeout(run,0)}).observe(document.body,{childList:true,subtree:true});
   if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",run);else run();
 })();

@@ -9,7 +9,6 @@
     all("button", root).forEach(function (button) {
       var text = button.textContent.trim();
       if (text === "+ Fund") button.textContent = "+ Sinking Fund";
-      if (text === "+ Fondo") button.textContent = "+ Fondo";
     });
   }
 
@@ -47,7 +46,11 @@
     polishBanking(document);
   }
 
-  new MutationObserver(patch).observe(document.body, { childList: true, subtree: true });
+  var _patchTimer;
+  new MutationObserver(function () {
+    clearTimeout(_patchTimer);
+    _patchTimer = setTimeout(patch, 0);
+  }).observe(document.body, { childList: true, subtree: true });
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", patch);
   else patch();
 })();
