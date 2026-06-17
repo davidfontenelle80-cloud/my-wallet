@@ -1,7 +1,7 @@
 {
   "name": "My Wallet",
   "short_name": "Wallet",
-  "description": "Manual personal finance command center with sinking funds, transactions, transfers, goals, and credit card coverage.",
+  "description": "Manual personal finance command center with accounts, sinking funds, transactions, transfers, goals, and investments.",
   "start_url": "./",
   "display": "standalone",
   "background_color": "#102331",

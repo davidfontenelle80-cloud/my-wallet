@@ -54,8 +54,11 @@
     modal.querySelector("[data-close]").onclick=closeModal;
     modal.querySelector("[data-cancel]").onclick=closeModal;
     modal.querySelector("[data-confirm]").onclick=function(){
+      var fundIds=(account.funds||[]).map(function(f){return f.id});
       data.accounts=(data.accounts||[]).filter(function(a){return a.id!==account.id});
-      data.goals=(data.goals||[]).filter(function(g){return g.linkedAccountId!==account.id});
+      data.goals=(data.goals||[]).filter(function(g){
+        return g.linkedAccountId!==account.id && fundIds.indexOf(g.linkedFundId)===-1;
+      });
       save(data);
       location.reload();
     };
