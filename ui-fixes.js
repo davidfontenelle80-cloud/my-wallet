@@ -40,27 +40,11 @@
     });
   }
 
-  function cleanDashboard(root) {
-    all("h2", root).forEach(function (h2) {
-      if (h2.textContent.trim() === "Credit Card Coverage") {
-        var card = h2.closest(".card");
-        if (card) card.remove();
-      }
-    });
-    all(".kpi-card, .stat-card, .mini-card, .card", root).forEach(function (card) {
-      all("span, small, p, h3, h4, div", card).forEach(function (el) {
-        if (el.childElementCount) return;
-        if (el.textContent.trim() === "Reserved") el.textContent = "In Sinking Funds";
-        if (el.textContent.trim() === "Reservado") el.textContent = "En fondos";
-      });
-    });
-  }
 
   function patch() {
     fixButtons(document);
     fixNumberInputs(document);
     polishBanking(document);
-    cleanDashboard(document);
   }
 
   new MutationObserver(patch).observe(document.body, { childList: true, subtree: true });
