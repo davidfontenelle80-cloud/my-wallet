@@ -128,7 +128,7 @@
       return /cloud backup|respaldo en la nube/i.test(h2.textContent || "");
     });
     const card = heading && heading.closest(".card");
-    if (!card || card.dataset.cloudCardReady === "1") return;
+    if (!card || card.dataset.cloudCardReady === "1") return false;
     card.dataset.cloudCardReady = "1";
     card.classList.add("cloud-card");
     card.innerHTML =
@@ -143,6 +143,7 @@
         '<button class="btn secondary" data-cloud-action="signout" hidden>Sign out</button>' +
       '</div>' +
       '<p class="help-text">Backs up only My Wallet data in Firestore. Receipt photos are discarded and never uploaded.</p>';
+    return true;
   }
 
   function openAuthDialog(mode) {
@@ -292,7 +293,7 @@
   }
 
   function bindCloudControls(root) {
-    upgradeCloudCard(root);
+    var upgraded = upgradeCloudCard(root);
     (root || document).querySelectorAll("[data-cloud-action]").forEach(function (button) {
       if (button.dataset.cloudBound === "1") return;
       button.dataset.cloudBound = "1";
@@ -300,7 +301,7 @@
         runCloudAction(button.dataset.cloudAction);
       });
     });
-    updateUI();
+    if (upgraded) updateUI();
   }
 
   window.MyWallet.CloudAuth = CloudAuth;
