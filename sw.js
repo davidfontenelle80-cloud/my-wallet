@@ -1,4 +1,4 @@
-const CACHE_VERSION = "my-wallet-v9-cache-disabled";
+const CACHE_VERSION = "my-wallet-v10-cache-disabled";
 
 self.addEventListener("install", (event) => {
   event.waitUntil(self.skipWaiting());

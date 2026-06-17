@@ -63,3 +63,8 @@ body{padding-bottom:calc(env(safe-area-inset-bottom) + 136px)}
   .cloud-actions{grid-template-columns:1fr}
   .cloud-auth-card .button-row{grid-template-columns:1fr}
 }
+
+/* Class-based theme fallback — classList.toggle is more reliable than
+   attribute-selector re-evaluation on the root element in iOS Safari/WKWebView */
+.theme-light{--ink:#f4f1eb;--panel:#ffffff;--panel-2:#edf3f6;--text:#102331;--muted:#51606a;--shadow:0 14px 35px rgba(47,102,136,.18);color-scheme:light}
+.theme-light .card,.theme-light .hero,.theme-light .modal-card{background:rgba(255,255,255,.82);border-color:rgba(47,102,136,.14)}
