@@ -5,6 +5,7 @@
   function save(x){localStorage.setItem(K,JSON.stringify(x))}
   function amt(t){return Number(String(t||"").replace(/[^0-9.-]/g,""))||0}
   function money(n){return (Number(n)||0).toLocaleString("en-US",{style:"currency",currency:"USD"})}
+  function esc(t){return String(t||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;").replace(/'/g,"&#39;")}
   function small(label){var b=document.createElement("button");b.type="button";b.className="btn secondary";b.textContent=label;b.style.minHeight="32px";b.style.padding="0 12px";b.style.fontSize=".82rem";return b}
   function cleanName(t){return String(t||"").replace(/^📁\s*/,"").trim()}
   function closeModal(){var m=document.getElementById("modal");if(m){m.classList.add("hidden");m.innerHTML=""}}
@@ -18,7 +19,7 @@
     if(!modal)return;
     var res=reserved(account);
     modal.classList.remove("hidden");
-    modal.innerHTML='<div class="modal-card"><div class="section-title"><div><h2>'+account.name+'</h2><p class="muted">'+account.type+' account</p></div><button class="icon-btn" data-close>×</button></div><div class="row"><span>Balance</span><strong>'+money(account.balance)+'</strong></div><div class="row"><span>Reserved</span><strong>'+money(res)+'</strong></div><div class="row"><span>Available</span><strong>'+money((account.balance||0)-res)+'</strong></div><div class="button-row"><button class="btn gold" data-edit>Edit Account</button><button class="btn danger" data-remove>Remove Account</button><button class="btn secondary" data-cancel>Cancel</button></div></div>';
+    modal.innerHTML='<div class="modal-card"><div class="section-title"><div><h2>'+esc(account.name)+'</h2><p class="muted">'+esc(account.type)+' account</p></div><button class="icon-btn" data-close>×</button></div><div class="row"><span>Balance</span><strong>'+money(account.balance)+'</strong></div><div class="row"><span>Reserved</span><strong>'+money(res)+'</strong></div><div class="row"><span>Available</span><strong>'+money((account.balance||0)-res)+'</strong></div><div class="button-row"><button class="btn gold" data-edit>Edit Account</button><button class="btn danger" data-remove>Remove Account</button><button class="btn secondary" data-cancel>Cancel</button></div></div>';
     modal.querySelector("[data-close]").onclick=closeModal;
     modal.querySelector("[data-cancel]").onclick=closeModal;
     modal.querySelector("[data-edit]").onclick=function(){openEditForm(account.name)};
@@ -29,7 +30,7 @@
     var account=findAccount(accountName,data);
     if(!account)return;
     var modal=document.getElementById("modal");
-    modal.innerHTML='<div class="modal-card"><div class="section-title"><h2>Edit Account</h2><button class="icon-btn" data-close>×</button></div><form class="form-grid"><div class="field"><label>Account name</label><input name="name" value="'+String(account.name).replace(/"/g,"&quot;")+'"></div><div class="field"><label>Type</label><select name="type"><option value="checking">checking</option><option value="savings">savings</option><option value="cash">cash</option><option value="brokerage">brokerage</option><option value="crypto">crypto</option></select></div><div class="field"><label>Balance</label><input name="balance" type="number" step="0.01" value="'+(account.balance||0)+'"></div><button class="btn gold" type="submit">Save Changes</button><button class="btn secondary" type="button" data-cancel>Cancel</button></form></div>';
+    modal.innerHTML='<div class="modal-card"><div class="section-title"><h2>Edit Account</h2><button class="icon-btn" data-close>×</button></div><form class="form-grid"><div class="field"><label>Account name</label><input name="name" value="'+esc(account.name)+'"></div><div class="field"><label>Type</label><select name="type"><option value="checking">checking</option><option value="savings">savings</option><option value="cash">cash</option><option value="brokerage">brokerage</option><option value="crypto">crypto</option></select></div><div class="field"><label>Balance</label><input name="balance" type="number" step="0.01" value="'+(account.balance||0)+'"></div><button class="btn gold" type="submit">Save Changes</button><button class="btn secondary" type="button" data-cancel>Cancel</button></form></div>';
     modal.querySelector('select[name="type"]').value=account.type||"checking";
     modal.querySelector("[data-close]").onclick=closeModal;
     modal.querySelector("[data-cancel]").onclick=closeModal;
@@ -50,7 +51,7 @@
     if(!account)return;
     var modal=document.getElementById("modal");
     var fundCount=(account.funds||[]).length;
-    modal.innerHTML='<div class="modal-card"><div class="section-title"><h2>Remove Account?</h2><button class="icon-btn" data-close>×</button></div><p class="help-text">'+account.name+' and '+fundCount+' sinking fund(s) will be removed.</p><div class="button-row"><button class="btn danger" data-confirm>Remove Account</button><button class="btn secondary" data-cancel>Cancel</button></div></div>';
+    modal.innerHTML='<div class="modal-card"><div class="section-title"><h2>Remove Account?</h2><button class="icon-btn" data-close>×</button></div><p class="help-text">'+esc(account.name)+' and '+fundCount+' sinking fund(s) will be removed.</p><div class="button-row"><button class="btn danger" data-confirm>Remove Account</button><button class="btn secondary" data-cancel>Cancel</button></div></div>';
     modal.querySelector("[data-close]").onclick=closeModal;
     modal.querySelector("[data-cancel]").onclick=closeModal;
     modal.querySelector("[data-confirm]").onclick=function(){
