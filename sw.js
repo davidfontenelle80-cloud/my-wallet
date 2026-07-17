@@ -1,4 +1,4 @@
-const CACHE_VERSION = "my-wallet-v12-cache-disabled";
+const CACHE_VERSION = "my-wallet-v12-cache-disabled-no-pinch-zoom";
 
 self.addEventListener("install", (event) => {
   event.waitUntil(self.skipWaiting());
