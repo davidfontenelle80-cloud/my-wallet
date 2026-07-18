@@ -11,7 +11,7 @@
   <link rel="manifest" href="manifest.json" />
   <link rel="icon" type="image/svg+xml" href="icons/favicon.svg" />
   <link rel="apple-touch-icon" href="icons/favicon.svg" />
-  <link rel="stylesheet" href="styles.css?v=10" />
+  <link rel="stylesheet" href="styles.css?v=14" />
 </head>
 <body>
   <div id="app" class="app-shell">
@@ -37,8 +37,35 @@
   <section id="onboarding" class="onboarding hidden" aria-live="polite"></section>
   <div id="modal" class="modal hidden" aria-hidden="true"></div>
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
-  <script src="cache-reset.js?v=1"></script>
-  <script src="app.js?v=13"></script>
+  <script>
+    (function () {
+      var recovered = sessionStorage.getItem('wallet_boot_recovered') === '1';
+      function showRecovery(message) {
+        var main = document.getElementById('main');
+        if (!main) return;
+        main.innerHTML = '<div style="padding:24px;text-align:center"><h2>My Wallet could not finish loading</h2><p>' + message + '</p><button id="walletRecoveryBtn" style="padding:12px 18px;border-radius:10px">Repair and reopen</button></div>';
+        var btn = document.getElementById('walletRecoveryBtn');
+        if (btn) btn.onclick = function () {
+          sessionStorage.setItem('wallet_boot_recovered', '1');
+          Promise.all([
+            window.caches ? caches.keys().then(function (keys) { return Promise.all(keys.filter(function (key) { return key.indexOf('my-wallet-') === 0; }).map(function (key) { return caches.delete(key); })); }) : Promise.resolve(),
+            navigator.serviceWorker ? navigator.serviceWorker.getRegistrations().then(function (regs) { return Promise.all(regs.filter(function (reg) { return reg.scope.indexOf('/my-wallet/') !== -1; }).map(function (reg) { return reg.unregister(); })); }) : Promise.resolve()
+          ]).then(function () { location.reload(); });
+        };
+      }
+      window.addEventListener('error', function () { setTimeout(function () { showRecovery('A required app file did not load.'); }, 0); }, { once: true });
+      setTimeout(function () {
+        var main = document.getElementById('main');
+        if (main && !main.children.length && !recovered) showRecovery('The saved app files may be stale on this phone.');
+      }, 5000);
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', function () {
+          navigator.serviceWorker.register('./sw.js?v=13', { scope: './' }).catch(function () {});
+        });
+      }
+    })();
+  </script>
+  <script src="app.js?v=14"></script>
   <script src="ui-fixes.js?v=6"></script>
   <script src="card-remove.js?v=4"></script>
   <script src="fund-edit.js?v=7"></script>
